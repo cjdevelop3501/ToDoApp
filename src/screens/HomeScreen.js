@@ -1,9 +1,12 @@
-import { View, Text, SafeAreaView, TouchableOpacity, TextInput, Alert, FlatList, Keyboard, ScrollView } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, Alert, Keyboard, ScrollView } from 'react-native'
 import React, {useState, useEffect} from 'react'
-import { blue_main, blue_secondary ,grey_color, white_color, globalData } from '../constants';
+import { grey_color } from '../constants';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { todoContext } from '../db/realm';
+import Stopwatch from '../components/Stopwatch';
+import BottomTabBar from '../components/BottomTabBar';
+import { useTheme } from 'react-native-paper';
 const {useQuery, useRealm, useObject} = todoContext;
 const Drawer = createDrawerNavigator();
 
@@ -18,6 +21,13 @@ const HomeScreen = ({route,navigation}) => {
     const [expand, setExpand] = useState('none');
     const [emptySearch, setEmptySearch] = useState(false);
     const [result, setResult] = useState([]);
+
+    const [activeTab, setActiveTab] = useState(0);
+    const paperTheme = useTheme();
+
+    const handleTabPress = (index) => {
+        setActiveTab(index);
+    };
 
     const realm = useRealm();
     const currentTodo = useObject('Todo', Realm.BSON.ObjectId(enableCreateSubTask));
@@ -46,7 +56,7 @@ const HomeScreen = ({route,navigation}) => {
                 name: title,
                 completed: false,
                 parent: currentTodo.name,
-                completionTime: 0,
+                completionTime: "",
                 description: "",
             }
             realm.write(() => {
@@ -80,7 +90,17 @@ const HomeScreen = ({route,navigation}) => {
         if(searchInput.length > 0) {
             let tempList = result.filter((item) => {
                 if (item.name.toLowerCase().includes(searchInput.toLowerCase())) {
+                    console.log('parent matched!');
                     return item;
+                }
+                if(item.child.length > 0) {
+                    for(let i = 0; i < item.child.length; i++) {
+                        if(item.child[i].name.toLowerCase().includes(searchInput.toLowerCase())) {
+                            console.log('child matched!');
+                            setExpand(item.name);
+                            return item;
+                        }
+                    }
                 }
             })
             if(tempList.length < 1) {
@@ -105,14 +125,15 @@ const HomeScreen = ({route,navigation}) => {
 
   return (
     <View className="flex flex-1 justify-center items-center bg-white">
-
+        <View className="flex flex-1 justify-center items-center">
         {
             todo.length > 0 ? (
                 <View className="flex flex-1 items-center">
                     {enableCreateInList ? (
                         <View className='flex flex-row mt-6 mx-4 items-center h-12'>
                             <TextInput className='border-2 flex flex-1 h-full text-lg' value={newTitleInList} onChangeText={setNewTitleInList} placeholder='输入主事项名' placeholderTextColor={grey_color}/>
-                            <TouchableOpacity className={`h-full justify-center px-2 bg-[#0095ff]`} 
+                            <TouchableOpacity className={`h-full justify-center px-2`}
+                                style={{backgroundColor: paperTheme.colors.main}} 
                                 onPress={() => {
                                     Keyboard.dismiss();
                                     if(newTitleInList.length > 0) {
@@ -137,7 +158,8 @@ const HomeScreen = ({route,navigation}) => {
                     ) : enableCreateSubTask !== 0 ? (
                         <View className='flex flex-row mt-6 mx-4 items-center h-12'>
                             <TextInput className='border-2 flex flex-1 h-full text-lg' value={newSubTitleInList} onChangeText={setNewSubTitleInList} placeholder='输入子事项名' placeholderTextColor={grey_color}/>
-                            <TouchableOpacity className={`h-full justify-center px-2 bg-[#0095ff]`} 
+                            <TouchableOpacity className={`h-full justify-center px-2`}
+                                style={{backgroundColor: paperTheme.colors.main}} 
                                 onPress={() => {
                                     Keyboard.dismiss();
                                     if(newSubTitleInList.length > 0) {
@@ -161,8 +183,9 @@ const HomeScreen = ({route,navigation}) => {
                         </View>
                     ) : (
                         <View className='flex flex-row mt-6 mx-4 items-center h-12'>
-                            <TextInput className='border-2 flex flex-1 h-full text-lg' value={searchInput} onChangeText={setSearchInput} placeholder='输入事项名' placeholderTextColor={grey_color}/>
-                            <TouchableOpacity className={`h-full justify-center px-2 bg-[#0095ff]`} 
+                            <TextInput className='border-2 flex flex-1 h-full text-lg' value={searchInput} onChangeText={setSearchInput} placeholder='输入事项名' placeholderTextColor={grey_color}  />
+                            <TouchableOpacity className={`h-full justify-center px-2`}
+                            style={{backgroundColor: paperTheme.colors.main}} 
                             onPress={() => {
                                 filterList();
                             }}>
@@ -177,13 +200,14 @@ const HomeScreen = ({route,navigation}) => {
                         )
                     }
 
-                    <View className='flex flex-row my-8 mx-4 justify-center'>
+                    <View className='flex flex-row my-8 mx-4 justify-center pb-10'>
                         
-                        <ScrollView className="my-6" contentContainerStyle={{alignItems: 'center'}}>
-                            {result.map((item, index) => {
+                        <ScrollView className="my-6" contentContainerStyle={{alignItems: 'center'}} persistentScrollbar showsVerticalScrollIndicator >
+                            {result.map((item) => {
                                 return (
                                 <>
-                                <View key={index} className={`items-center flex-row justify-between border-b-2 border-[#0095ff] py-1`}>
+                                <View key={item._id} className={`items-center flex-row justify-between border-b-2 py-1`}
+                                style={{borderColor: paperTheme.colors.main}}>
                                     <TouchableOpacity className='flex-row flex-1' disabled={item.child.length > 0?false:true}
                                     onPress={() => {
                                         if(expand === 'none') {
@@ -219,7 +243,7 @@ const HomeScreen = ({route,navigation}) => {
                                             }}
                                             disabled={enableCreateInList}
                                         >
-                                            <Text className={`text-[${blue_main}] text-lg mr-2 pb-1`}>{enableCreateSubTask === item._id.toString() ? 'X' : '+'}</Text>
+                                            <Text className={`text-lg mr-2 pb-1`} style={{color: paperTheme.colors.main}}>{enableCreateSubTask === item._id.toString() ? 'X' : '+'}</Text>
                                         </TouchableOpacity>)}
                                         <TouchableOpacity
                                             className="justify-center"
@@ -227,19 +251,20 @@ const HomeScreen = ({route,navigation}) => {
                                                 navigation.navigate('Detail', { itemDetails: item, isChild: false });
                                             }}
                                         >
-                                            <Icon name='arrow-right-thin' size={30} color={blue_main} />
+                                            <Icon name='arrow-right-thin' size={30} color={paperTheme.colors.main} />
                                         </TouchableOpacity>
                                     </View>
                                     
                                 </View>
+                                {!item.completed && <Stopwatch id={item._id} mode='home' />}
                                 {
-                                    item.child.length > 0 && item.child.map((childItem, subIndex) => {
+                                    item.child.length > 0 && item.child.map((childItem) => {
                                         return (
                                             // child item
                                             <>
                                             {
                                                 childItem.parent === expand && (
-                                                    <View key={subIndex} className={`items-center flex-row justify-between border-b-2 border-[#0095ff] py-1`}>
+                                                    <View className={`items-center flex-row justify-between border-b-2 py-1`} style={{borderColor: paperTheme.colors.main}}>
                                                         <TouchableOpacity className='flex-row flex-1' disabled
                                                         onPress={() => {}}
                                                         >
@@ -252,13 +277,14 @@ const HomeScreen = ({route,navigation}) => {
                                                                     navigation.navigate('Detail', { itemDetails: childItem, isChild: true });
                                                                 }}
                                                             >
-                                                                <Icon name='arrow-right-thin' size={30} color={blue_main} />
+                                                                <Icon name='arrow-right-thin' size={30} color={paperTheme.colors.main} />
                                                             </TouchableOpacity>
                                                         </View>
                                                         
                                                     </View>
                                                 )
                                             }
+                                            {!childItem.completed && childItem.parent === expand && <Stopwatch id={childItem._id} mode='home' />}
                                             </>
                                         )
                                     })
@@ -274,7 +300,7 @@ const HomeScreen = ({route,navigation}) => {
                                         }}
                                     className='mt-2'
                                     >
-                                    <Text className='text-lg text-[#0095ff]'>
+                                    <Text className='text-lg' style={{color: paperTheme.colors.main}}>
                                         + 新建一个事项
                                     </Text>
                                 </TouchableOpacity>
@@ -282,21 +308,13 @@ const HomeScreen = ({route,navigation}) => {
                         </ScrollView>
                     </View>
                     
-                    {/* <View className='flex flex-row mt-8 mx-4'>
-                        <FlatList
-                            data={result}
-                            renderItem={showList}
-                            className=''
-                        />
-                    </View> */}
-                    
                 </View>
             ) : (
                 <View>
                 {enableCreate ? (
                     <View className='flex flex-row items-center h-12 w-full px-4'>
                         <TextInput className='border-2 flex flex-1 h-full text-lg' value={newTitle} onChangeText={setNewTitle} placeholder='输入事项名' placeholderTextColor={grey_color}/>
-                        <TouchableOpacity className={`h-full justify-center px-2 bg-[${blue_main}]`} onPress={() => {
+                        <TouchableOpacity className={`h-full justify-center px-2`} style={{backgroundColor: paperTheme.colors.main}} onPress={() => {
                             if(newTitle.length > 0) {
                                 addToDo(newTitle)
                             } else {
@@ -321,7 +339,8 @@ const HomeScreen = ({route,navigation}) => {
                 </View>
             )
         }
-        
+        </View>
+        <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
     </View>
   )
 }

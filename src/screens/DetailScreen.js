@@ -1,15 +1,21 @@
 import { View, Text, TextInput, TouchableOpacity } from 'react-native'
 import React, {useState} from 'react'
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+import { useDispatch, useSelector } from 'react-redux';
+import { startStopwatch, pauseStopwatch, resetStopwatch, updateElapsedTime } from '../redux/actions';
+import timerService from '../services/TimerService';
+
 import { todoContext } from '../db/realm';
-import { blue_main } from '../constants';
+import { secondsToHms } from '../constants';
+import Stopwatch from '../components/Stopwatch';
 const {useQuery, useRealm, useObject} = todoContext;
 
 const DetailScreen = ({route, navigation}) => {
   const [desc, setDesc] = useState(route.params.itemDetails.description?route.params.itemDetails.description:'');
-  console.log('itemDetails: ', route.params.itemDetails);
   const realm = useRealm();
   const currentTodo = route.params.isChild ? useObject('ChildTodo', route.params.itemDetails._id) : useObject('Todo', route.params.itemDetails._id);
+  const id = route.params.itemDetails._id.toString();
 
   const saveDesc = () => {
     if(currentTodo) {
@@ -23,6 +29,7 @@ const DetailScreen = ({route, navigation}) => {
   const completeToDo = () => {
     if(currentTodo) {
       realm.write(() => {
+        currentTodo.completionTime = secondsToHms(stopwatch.elapsedTime);
         currentTodo.completed = true;
       });
     }
@@ -36,6 +43,10 @@ const DetailScreen = ({route, navigation}) => {
     navigation.navigate('DrawerNavigation');
   }
 
+  const dispatch = useDispatch();
+  const stopwatch = useSelector(state => state[id]) || { elapsedTime: 0, isRunning: false };
+  console.log("Stopwatch: ", stopwatch);
+
   return (
     <View className="flex flex-1 m-3">
         <View className="flex flex-row my-1 items-center">
@@ -44,7 +55,7 @@ const DetailScreen = ({route, navigation}) => {
         </View>
         <View className="flex flex-row my-1 items-center">
           <Text className="text-xl text-black">进行时间</Text>
-          <Text className="text-lg text-[#aeaeae] ml-2">开始</Text>
+          <Stopwatch id={id} mode='detail' completed={route.params.itemDetails.completed} />
         </View>
         <View className="flex flex-row my-1 items-center">
           <Text className="text-xl text-black">备注</Text>
@@ -60,6 +71,8 @@ const DetailScreen = ({route, navigation}) => {
         {!route.params.itemDetails.completed && (
           <TouchableOpacity className={`items-center justify-center px-2 bg-[#0095ff] h-12 flex flex-row mt-3`} 
             onPress={() => {
+              timerService.stopTimer(id);
+              dispatch(pauseStopwatch(id));
               completeToDo();
             }}>
             <Text className='text-3xl text-white'>完成</Text>
@@ -67,6 +80,7 @@ const DetailScreen = ({route, navigation}) => {
         )}
         <TouchableOpacity className={`items-center justify-center px-2 bg-[#ff5656] h-12 flex flex-row mt-3`} 
           onPress={() => {
+            timerService.deleteTimer(id);
             deleteToDo();
           }}>
           <Text className='text-3xl text-white'>删除</Text>

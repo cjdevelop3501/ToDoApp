@@ -8,7 +8,7 @@ export class ChildTodo extends Realm.Object {
             _id: "objectId",
             name: "string",
             parent: "string",
-            completionTime: "int?",
+            completionTime: "string?",
             description: "string?",
             completed: "bool"
         },
@@ -23,7 +23,7 @@ export class Todo extends Realm.Object {
             _id: "objectId",
             name: "string",
             child: "ChildTodo[]",
-            completionTime: "int?",
+            completionTime: "string?",
             description: "string?",
             completed: "bool"
         },
